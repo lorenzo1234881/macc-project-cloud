@@ -1,143 +1,64 @@
-from flask import Flask, request, redirect, Response
-from flask_sqlalchemy import SQLAlchemy
-
-from geopy import Nominatim
-
-import uuid
-
-import os
-
+from flask import Flask, request, redirect, Response, session
+from google.oauth2 import id_token
+from google.auth.transport import requests
 import json
+from flask_login import LoginManager
 
-LOCATOR_USER_AGENT = "macc-project"
-UPLOAD_FOLDER = "/home/ll328II/images"
-UPLOAD_URL = "https://ll328ii.pythonanywhere.com/images"
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+from config import conf
+from models import Restaurant
+import upload_restaurant
 
-app = Flask(__name__)
+def create_app():
 
-SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
-    username="ll328II",
-    password="b25PEtQuxYh4yzA",
-    hostname="ll328II.mysql.pythonanywhere-services.com",
-    databasename="ll328II$MACCProject",
-)
-app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
-app.config["SQLALCHEMY_POOL_RECYCLE"] = 299
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app = Flask(__name__)
 
-app.config['MAX_CONTENT_LENGTH'] = 512 * 1000 # 512 kb
+    from models import db, SQLALCHEMY_DATABASE_URI
+    db.init_app(app)
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# app.config['SECRET_KEY'] = 'XmMSjnfM7dhSB8dQazZ'
+    app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
+    app.config["SQLALCHEMY_POOL_RECYCLE"] = 299
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-db = SQLAlchemy(app)
-locator = Nominatim(user_agent="macc-project")
+    app.config['MAX_CONTENT_LENGTH'] = conf.MAX_CONTENT_LENGTH
 
-class Restaurant(db.Model):
+    app.config['UPLOAD_FOLDER'] = conf.UPLOAD_FOLDER
 
-    __tablename__ = "restaurant"
+    app.config['SECRET_KEY'] = conf.SECRET_KEY
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(20))
-    description = db.Column(db.String(4096))
-    path_image = db.Column(db.String(128))
-    address = db.Column(db.String(128))
-    latitude = db.Column(db.Float(10,6))
-    longitude = db.Column(db.Float(10,6))
-
-    def as_dict(self):
-        return {
-            "name" : self.name,
-            "description" : self.description,
-            "path_image" : self.path_image,
-            "address" : self.address,
-            "latitude" : self.latitude,
-            "longitude" : self.longitude
-        }
+    return app
 
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+app = create_app()
+app.register_blueprint(upload_restaurant.bp)
 
-def add_restaurant_to_db(name, description, path_image, address, latitude, longitude):
+# login_manager = LoginManager()
+# login_manager.init_app(app)
 
-    restaurant = Restaurant(name=name,
-        description=description,
-        path_image=path_image,
-        address=address,
-        latitude=latitude,
-        longitude=longitude)
-
-    db.session.add(restaurant)
-    db.session.commit()
 
 @app.route('/')
 def hello_world():
-    return 'Hello from Flask!'
+    return 'All working'
 
-@app.route('/upload-restaurant', methods=["GET", "POST"])
-def upload_restaurant():
+@app.route('/token-signin', methods=["POST"])
+def login():
+    request_data = request.get_json()
+    token = request_data['id_token']
+    try:
+        idinfo = id_token.verify_oauth2_token(token, requests.Request(), conf.CLIENT_ID)
 
-    if request.method == 'POST':
+        # userid = idinfo['sub']
 
-        if 'restaurant_photo' not in request.files:
-            print("upload_restaurant():", "POST request doesn't contain file part")
-            return redirect(request.url)
+        print('authentication successful')
 
-        image = request.files['restaurant_photo']
-        name = request.form['name']
-        address = request.form['address']
-        description = request.form['description']
+        return {'auth' : True}
 
-        location = locator.geocode(address)
-        if location == None:
-            print("upload_restaurant():", 'Invalid address')
-            return redirect(request.url)
+    except ValueError:
+        # Invalid token
+        pass
 
-        if image.filename == '':
-            print("upload_restaurant():", "Didn't select a file")
-            return redirect(request.url)
+    print('authentication failed')
 
-        if image and allowed_file(image.filename):
-            print("upload_restaurant():", "Extension not allowed")
-            filename = str(uuid.uuid4())
-            image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-            add_restaurant_to_db(name,
-                description,
-                os.path.join(UPLOAD_URL, filename),
-                address,
-                location.latitude,
-                location.longitude)
-
-
-    return '''
-    <!doctype html>
-    <title>Upload new Restaurant</title>
-    <h1>Upload new Restaurant</h1>
-
-    <form method=post enctype=multipart/form-data>
-        <label for="name">Name:</label><br>
-        <input type="text" id="name" name="name" value=""><br>
-        <br>
-
-        <label for="address">Address:</label><br>
-        <input type="text" id="address" name="address" value=""><br>
-        <br>
-
-        <label for="restaurant_photo">Restaurant Photo:</label><br>
-        <input type=file name=restaurant_photo><br>
-        <br>
-
-        <label for="description">Description:</label><br>
-        <textarea name="description" placeholder="Enter a description"></textarea><br>
-        <br>
-        <input type=submit value=Upload>
-    </form>
-    '''
-
+    return {'auth' : False}
 
 @app.route("/nearby-restaurants", methods=["GET", "POST"])
 def nearby_restaurants():
@@ -155,19 +76,12 @@ def nearby_restaurants():
         miles = 100
         max_nresults = 10
 
-        cursor_result = db.session.execute("""SELECT id, name, path_image, description, address, ( 3959 * acos( cos( radians(:user_latitude) ) * cos( radians( latitude ) ) * cos( radians( longitude ) - radians(:user_longitude) ) + sin( radians(:user_latitude) ) * sin( radians( latitude ) ) ) ) AS distance
-        FROM restaurant HAVING distance < :miles ORDER BY distance LIMIT 0 , :max_nresults""",
-        {"miles":miles, "max_nresults":max_nresults, "user_latitude":user_latitude, "user_longitude":user_longitude})
+        restaurants = Restaurant.near_user(miles, max_nresults, user_latitude, user_longitude)
 
-        list_row_mapping = cursor_result.mappings().all()
+        response = Response(json.dumps(restaurants) , mimetype='application/json') if restaurants != None else default_response
 
-        if len(list_row_mapping) > 0:
+        return response
 
-            restaurants = {"restaurants": [{k:v for k,v in r.items()} for r in list_row_mapping]} # from list of RowMapping to dict
-            return Response(json.dumps(restaurants) , mimetype='application/json')
-
-        else:
-            return default_response
 
     else:
         return default_response
