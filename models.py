@@ -1,7 +1,8 @@
+from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from config import conf
 
-SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
+SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
     username="ll328II",
     password=conf.PASSWORD_DB,
     hostname="ll328II.mysql.pythonanywhere-services.com",
@@ -17,15 +18,17 @@ class BaseMixin(object):
         db.session.add(obj)
         db.session.commit()
 
+        return obj
+
 class Restaurant(BaseMixin, db.Model):
 
     __tablename__ = "restaurant"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(20))
+    name = db.Column(db.String(20), nullable=False)
     description = db.Column(db.String(4096))
     path_image = db.Column(db.String(128))
-    address = db.Column(db.String(128))
+    address = db.Column(db.String(128), nullable=False)
     latitude = db.Column(db.Float(10,6))
     longitude = db.Column(db.Float(10,6))
 
@@ -50,3 +53,21 @@ class Restaurant(BaseMixin, db.Model):
 
         else:
             return None
+
+class User(UserMixin, BaseMixin, db.Model):
+
+    __tablename__ = "user"
+
+    id = db.Column(db.Integer, primary_key=True)
+    googleid = db.Column(db.Integer, unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+
+class Reservation(BaseMixin, db.Model):
+
+    __tablename__ = "reservation"
+
+    id = db.Column(db.Integer, primary_key=True)
+    userid = db.Column(db.Integer, nullable=False)
+    restaurantid = db.Column(db.Integer, nullable=False)
+    number_seats = db.Column(db.Integer, nullable=False)

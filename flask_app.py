@@ -1,12 +1,12 @@
-from flask import Flask, request, redirect, Response, session
-from google.oauth2 import id_token
-from google.auth.transport import requests
+from flask import Flask, request, Response
 import json
-from flask_login import LoginManager
 
 from config import conf
-from models import Restaurant
+from models import Restaurant, User, Reservation
 import upload_restaurant
+import auth
+
+from flask_login import login_required, current_user
 
 def create_app():
 
@@ -14,6 +14,9 @@ def create_app():
 
     from models import db, SQLALCHEMY_DATABASE_URI
     db.init_app(app)
+
+    from auth import login_manager
+    login_manager.init_app(app)
 
     app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_POOL_RECYCLE"] = 299
@@ -30,37 +33,14 @@ def create_app():
 
 app = create_app()
 app.register_blueprint(upload_restaurant.bp)
-
-# login_manager = LoginManager()
-# login_manager.init_app(app)
-
+app.register_blueprint(auth.bp)
 
 @app.route('/')
 def hello_world():
     return 'All working'
 
-@app.route('/token-signin', methods=["POST"])
-def login():
-    request_data = request.get_json()
-    token = request_data['id_token']
-    try:
-        idinfo = id_token.verify_oauth2_token(token, requests.Request(), conf.CLIENT_ID)
-
-        # userid = idinfo['sub']
-
-        print('authentication successful')
-
-        return {'auth' : True}
-
-    except ValueError:
-        # Invalid token
-        pass
-
-    print('authentication failed')
-
-    return {'auth' : False}
-
 @app.route("/nearby-restaurants", methods=["GET", "POST"])
+@login_required
 def nearby_restaurants():
 
     default_response = {"restaurants":[]}
@@ -85,4 +65,29 @@ def nearby_restaurants():
 
     else:
         return default_response
+
+@app.route("/make-reservation", methods=["POST"])
+@login_required
+def make_reservation():
+    if request.method == 'POST':
+        request_data = request.get_json()
+
+        restaurantid = request_data['restaurantid']
+        number_seats = request_data['number_seats']
+        userid = current_user.id
+
+        Reservation.create(userid=userid,
+        restaurantid=restaurantid,
+        number_seats=number_seats)
+
+        reservations = Reservation.query.filter_by(userid=userid).all()
+        print(reservations)
+
+        return {'reserved': True}
+
+if __name__ == '__main__':
+    from models import db
+    with app.app_context():
+        db.create_all()
+
 
