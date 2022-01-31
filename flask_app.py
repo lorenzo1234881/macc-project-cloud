@@ -76,12 +76,7 @@ def make_reservation():
         number_seats = request_data['number_seats']
         userid = current_user.id
 
-        Reservation.create(userid=userid,
-        restaurantid=restaurantid,
-        number_seats=number_seats)
-
-        reservations = Reservation.query.filter_by(userid=userid).all()
-        print(reservations)
+        Reservation.create_or_update(userid, restaurantid, number_seats)
 
         return {'reserved': True}
 

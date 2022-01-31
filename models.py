@@ -71,3 +71,21 @@ class Reservation(BaseMixin, db.Model):
     userid = db.Column(db.Integer, nullable=False)
     restaurantid = db.Column(db.Integer, nullable=False)
     number_seats = db.Column(db.Integer, nullable=False)
+
+    @classmethod
+    def create_or_update(cls, userid, restaurantid, number_seats):
+        reservationQuery = cls.query.filter_by(userid=userid, restaurantid=restaurantid)
+        reservation = reservationQuery.first()
+        if reservation == None:
+
+            print('Create new reservation')
+
+            cls.create(userid=userid,
+            restaurantid=restaurantid,
+            number_seats=number_seats)
+
+        else:
+            reservationQuery.update({'number_seats':number_seats})
+            db.session.commit()
+
+            print('Update reservation')
