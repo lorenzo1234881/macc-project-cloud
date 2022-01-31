@@ -80,6 +80,30 @@ def make_reservation():
 
         return {'reserved': True}
 
+@app.route("/get-reservations", methods=["GET"])
+@login_required
+def get_reservations():
+    default_response = {"reservations":[]}
+
+    userid = current_user.id
+
+    reservations = Reservation.query.filter_by(userid=userid).all()
+
+
+    if reservations != None:
+        json_array = [{'id':r.id, 'restaurantid':r.restaurantid, 'number_seats':r.number_seats} for r in reservations]
+        json_response = json.dumps({'reservations': json_array })
+        response = Response(json_response, mimetype='application/json')
+    else:
+        response = default_response
+
+    print(reservations)
+    print(type(reservations))
+    print(response)
+
+    return response
+
+
 if __name__ == '__main__':
     from models import db
     with app.app_context():
