@@ -46,3 +46,9 @@ def login():
     print('authentication failed')
 
     return {'auth' : False}
+
+@bp.route('/logout', methods=["GET"])
+def logout():
+    logout_user()
+
+    return {'logout' :True}

@@ -97,9 +97,6 @@ def get_reservations():
     else:
         response = default_response
 
-    print(reservations)
-    print(type(reservations))
-    print(response)
 
     return response
 
@@ -110,3 +107,16 @@ if __name__ == '__main__':
         db.create_all()
 
 
+@app.route("/cancel-reservation", methods=["POST"])
+@login_required
+def cancel_reservation():
+    request_data = request.get_json()
+
+    restaurantid = request_data['restaurantid']
+
+    userid = current_user.id
+
+    Reservation.delete(userid, restaurantid)
+
+
+    return {'reserved': False}

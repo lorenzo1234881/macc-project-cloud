@@ -89,3 +89,8 @@ class Reservation(BaseMixin, db.Model):
             db.session.commit()
 
             print('Update reservation')
+
+    @classmethod
+    def delete(cls, userid, restaurantid):
+        Reservation.query.filter_by(userid=userid, restaurantid=restaurantid).delete()
+        db.session.commit()
