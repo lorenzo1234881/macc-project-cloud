@@ -6,7 +6,8 @@ from models import User
 
 from flask_login import (
     LoginManager,
-    login_user
+    login_user,
+    logout_user
 )
 
 login_manager = LoginManager()
@@ -51,4 +52,4 @@ def login():
 def logout():
     logout_user()
 
-    return {'logout' :True}
+    return {'auth' : False}
