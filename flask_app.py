@@ -72,11 +72,26 @@ def make_reservation():
     if request.method == 'POST':
         request_data = request.get_json()
 
-        restaurantid = request_data['restaurantid']
-        number_seats = request_data['number_seats']
         userid = current_user.id
 
-        Reservation.create_or_update(userid, restaurantid, number_seats)
+        restaurantid = request_data['restaurantid']
+        number_seats = request_data['number_seats']
+        year = request_data['year']
+        month = request_data['month']
+        dayOfMonth = request_data['dayOfMonth']
+        hour = request_data['hour']
+        minute = request_data['minute']
+
+        Reservation.create_or_update(
+            userid,
+            restaurantid,
+            number_seats=number_seats,
+            year=year,
+            month=month,
+            dayOfMonth=dayOfMonth,
+            hour=hour,
+            minute=minute
+            )
 
         return {'reserved': True}
 
@@ -91,7 +106,16 @@ def get_reservations():
 
 
     if reservations != None:
-        json_array = [{'id':r.id, 'restaurantid':r.restaurantid, 'number_seats':r.number_seats} for r in reservations]
+        json_array = [
+            {'id':r.id,
+            'restaurantid':r.restaurantid,
+            'number_seats':r.number_seats,
+            'year':r.year,
+            'month':r.month,
+            'day':r.dayOfMonth,
+            'hour':r.hour,
+            'minute':r.minute} for r in reservations
+            ]
         json_response = json.dumps({'reservations': json_array })
         response = Response(json_response, mimetype='application/json')
     else:

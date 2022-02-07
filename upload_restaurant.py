@@ -64,10 +64,6 @@ def upload_restaurant_api():
         <input type="text" id="address" name="address" value=""><br>
         <br>
 
-        <label for="seating_capacity">Seating capacity:</label><br>
-        <input type="number" id="seating_capacity" name="seating_capacity" value=><br>
-        <br>
-
         <label for="restaurant_photo">Restaurant Photo:</label><br>
         <input type=file name=restaurant_photo><br>
         <br>

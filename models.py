@@ -59,7 +59,7 @@ class User(UserMixin, BaseMixin, db.Model):
     __tablename__ = "user"
 
     id = db.Column(db.Integer, primary_key=True)
-    googleid = db.Column(db.Integer, unique=True, nullable=False)
+    googleid = db.Column(db.Integer, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
 
 
@@ -71,21 +71,29 @@ class Reservation(BaseMixin, db.Model):
     userid = db.Column(db.Integer, nullable=False)
     restaurantid = db.Column(db.Integer, nullable=False)
     number_seats = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer)
+    month = db.Column(db.Integer)
+    dayOfMonth = db.Column(db.Integer)
+    hour = db.Column(db.Integer)
+    minute = db.Column(db.Integer)
+
 
     @classmethod
-    def create_or_update(cls, userid, restaurantid, number_seats):
+    def create_or_update(cls, userid, restaurantid, **kw):
+
         reservationQuery = cls.query.filter_by(userid=userid, restaurantid=restaurantid)
         reservation = reservationQuery.first()
         if reservation == None:
 
             print('Create new reservation')
 
-            cls.create(userid=userid,
-            restaurantid=restaurantid,
-            number_seats=number_seats)
+            kw['userid'] = userid
+            kw['restaurantid'] = restaurantid
+
+            cls.create(**kw)
 
         else:
-            reservationQuery.update({'number_seats':number_seats})
+            reservationQuery.update(kw)
             db.session.commit()
 
             print('Update reservation')
@@ -94,3 +102,4 @@ class Reservation(BaseMixin, db.Model):
     def delete(cls, userid, restaurantid):
         Reservation.query.filter_by(userid=userid, restaurantid=restaurantid).delete()
         db.session.commit()
+
