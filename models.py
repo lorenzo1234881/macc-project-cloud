@@ -40,7 +40,7 @@ class Restaurant(BaseMixin, db.Model):
         Snippet from web.archive.org/web/20170126150533/https://developers.google.com/maps/articles/phpsqlsearch_v3#findnearsql
         """
 
-        cursor_result = db.session.execute("""SELECT id, name, path_image, description, address, ( 3959 * acos( cos( radians(:user_latitude) ) * cos( radians( latitude ) ) * cos( radians( longitude ) - radians(:user_longitude) ) + sin( radians(:user_latitude) ) * sin( radians( latitude ) ) ) ) AS distance
+        cursor_result = db.session.execute("""SELECT id, name, path_image, description, address, latitude, longitude, ( 3959 * acos( cos( radians(:user_latitude) ) * cos( radians( latitude ) ) * cos( radians( longitude ) - radians(:user_longitude) ) + sin( radians(:user_latitude) ) * sin( radians( latitude ) ) ) ) AS distance
         FROM restaurant HAVING distance < :miles ORDER BY distance LIMIT 0 , :max_nresults""",
         {"miles":miles, "max_nresults":max_nresults, "user_latitude":user_latitude, "user_longitude":user_longitude})
 
